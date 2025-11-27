@@ -3,8 +3,11 @@ import { Input } from "@/components/ui/input";
 import { ConsultantCard } from "@/components/ConsultantCard";
 import { CategoryChip } from "@/components/CategoryChip";
 import { MobileNav } from "@/components/MobileNav";
-import { Search, Brain, Code, LineChart, Sparkles, Zap, Database } from "lucide-react";
-import { useState } from "react";
+import { Search, Brain, Code, LineChart, Sparkles, Zap, Database, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import consultant1 from "@/assets/consultant-1.jpg";
 import consultant2 from "@/assets/consultant-2.jpg";
 import consultant3 from "@/assets/consultant-3.jpg";
@@ -18,44 +21,79 @@ const categories = [
   { icon: Database, label: "Big Data" },
 ];
 
-const consultants = [
-  {
-    name: "Carlos Mendoza",
-    title: "Experto en ML & Deep Learning",
-    avatar: consultant1,
-    rating: 4.9,
-    reviews: 127,
-    priceFrom: "150",
-    location: "México",
-    verified: true,
-    tags: ["Machine Learning", "TensorFlow", "Python"],
-  },
-  {
-    name: "Ana Rodríguez",
-    title: "Especialista en NLP & ChatGPT",
-    avatar: consultant2,
-    rating: 5.0,
-    reviews: 89,
-    priceFrom: "200",
-    location: "España",
-    verified: true,
-    tags: ["GPT", "NLP", "Chatbots"],
-  },
-  {
-    name: "Miguel Torres",
-    title: "Consultor de Automatización IA",
-    avatar: consultant3,
-    rating: 4.8,
-    reviews: 156,
-    priceFrom: "120",
-    location: "Argentina",
-    verified: true,
-    tags: ["Automatización", "RPA", "APIs"],
-  },
-];
-
 const Index = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading, signOut } = useAuth();
   const [activeCategory, setActiveCategory] = useState(0);
+  const [consultants, setConsultants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const avatarMap: { [key: string]: string } = {
+    "Experto en ML & Deep Learning": consultant1,
+    "Especialista en NLP & ChatGPT": consultant2,
+    "Consultor de Automatización IA": consultant3,
+  };
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    const fetchConsultants = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("consultants")
+          .select("*")
+          .order("rating", { ascending: false });
+
+        if (error) throw error;
+
+        const consultantsWithAvatars = data.map((consultant) => ({
+          name: consultant.title.includes("ML")
+            ? "Carlos Mendoza"
+            : consultant.title.includes("NLP")
+            ? "Ana Rodríguez"
+            : "Miguel Torres",
+          title: consultant.title,
+          avatar: avatarMap[consultant.title] || consultant1,
+          rating: Number(consultant.rating),
+          reviews: consultant.total_reviews,
+          priceFrom: consultant.hourly_rate.toString(),
+          location: consultant.location || "México",
+          verified: consultant.verified,
+          tags: consultant.specializations || [],
+        }));
+
+        setConsultants(consultantsWithAvatars);
+      } catch (error) {
+        console.error("Error fetching consultants:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchConsultants();
+    }
+  }, [user]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Sparkles className="w-12 h-12 text-primary animate-pulse mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -68,9 +106,9 @@ const Index = () => {
             </h1>
             <p className="text-xs text-muted-foreground">Encuentra tu experto en IA</p>
           </div>
-          <Button size="sm" variant="outline" className="border-primary/50">
-            <Sparkles className="w-4 h-4 mr-1" />
-            Premium
+          <Button size="sm" variant="outline" className="border-primary/50" onClick={handleSignOut}>
+            <LogOut className="w-4 h-4 mr-1" />
+            Salir
           </Button>
         </div>
 

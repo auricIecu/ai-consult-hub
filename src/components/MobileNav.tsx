@@ -1,10 +1,9 @@
-import { Home, Search, MessageSquare, User } from "lucide-react";
+import { Home, Search, User } from "lucide-react";
 import { useState } from "react";
 
 const navItems = [
   { icon: Home, label: "Inicio", id: "home" },
   { icon: Search, label: "Buscar", id: "search" },
-  { icon: MessageSquare, label: "Mensajes", id: "messages" },
   { icon: User, label: "Perfil", id: "profile" },
 ];
 
